@@ -58,10 +58,6 @@ jobs:
           cp AppRun AppDir/
           chmod +x AppDir/usr/bin/kilo_manager AppDir/AppRun
 
-      - name: Generate AppImage recipe
-        run: |
-          appimage-builder --generate
-
       - name: Build AppImage
         run: |
           appimage-builder

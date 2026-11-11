@@ -8,11 +8,8 @@ AppImage:
   description: Desktop GUI for managing Kilo configuration
 
 Bundle:
-  # The executable to bundle
   binaries:
-    - kilo_manager
-  # Desktop file
+    - usr/bin/kilo_manager
   desktop_files:
     - kilo-manager.desktop
-  # AppRun script
   app_run: AppRun
