@@ -7,7 +7,7 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     permissions:
       contents: write
     steps:
@@ -33,7 +33,7 @@ jobs:
           cp dist/kilo_manager AppDir/usr/bin/
           cp kilo-manager.desktop AppDir/
           cp AppRun AppDir/
-          cp kilo-manager.png AppDir/kilo-manager.png
+          cp kilo_manager_logo.png AppDir/kilo_manager_logo.png
           chmod +x AppDir/usr/bin/kilo_manager AppDir/AppRun
 
       - name: Download appimagetool

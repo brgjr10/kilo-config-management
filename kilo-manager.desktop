@@ -4,6 +4,6 @@ Type=Application
 Name=Kilo Manager
 Comment=Desktop GUI for managing Kilo configuration
 Exec=usr/bin/kilo_manager
-Icon=kilo-manager
+Icon=kilo_manager_logo
 Categories=Development;Utility;
 Terminal=false
