@@ -126,23 +126,40 @@ class KiloManager:
         tb.Button(header, text="➕ Add Server", command=self.add_mcp_server,
                   bootstyle="primary").pack(side=RIGHT)
         
+        # Toolbar
+        toolbar = tb.Frame(panel)
+        toolbar.pack(fill=X, pady=(0, 10))
+        tb.Button(toolbar, text="➕ Add Server", command=self.add_mcp_server,
+                  bootstyle="primary-outline").pack(side=LEFT, padx=(0, 5))
+        self.toggle_btn = tb.Button(toolbar, text="Toggle Enabled",
+                                    command=self.toggle_selected_mcp,
+                                    bootstyle="secondary-outline")
+        self.toggle_btn.pack(side=LEFT, padx=(0, 5))
+        tb.Label(toolbar, text="Click a server to select; double-click or use Toggle to enable/disable",
+                 bootstyle="secondary").pack(side=LEFT, padx=10)
+
         # Server list
-        self.mcp_tree = tb.Treeview(panel, columns=("type", "details"), show="tree headings",
+        self.mcp_tree = tb.Treeview(panel, columns=("type", "enabled", "details"), show="tree headings",
                                      bootstyle="secondary", height=15)
         self.mcp_tree.heading("#0", text="Name")
         self.mcp_tree.heading("type", text="Type")
+        self.mcp_tree.heading("enabled", text="Enabled")
         self.mcp_tree.heading("details", text="Details")
-        self.mcp_tree.column("#0", width=250)
-        self.mcp_tree.column("type", width=120)
-        self.mcp_tree.column("details", width=400)
+        self.mcp_tree.column("#0", width=220)
+        self.mcp_tree.column("type", width=110)
+        self.mcp_tree.column("enabled", width=90, anchor=CENTER)
+        self.mcp_tree.column("details", width=420)
         self.mcp_tree.pack(fill=BOTH, expand=True)
         
         # Context menu
         self.mcp_menu = Menu(self.root, tearoff=0)
         self.mcp_menu.add_command(label="Edit", command=self.edit_mcp_server)
+        self.mcp_menu.add_command(label="Toggle Enabled", command=self.toggle_selected_mcp)
+        self.mcp_menu.add_separator()
         self.mcp_menu.add_command(label="Delete", command=self.delete_mcp_server)
         self.mcp_tree.bind("<Button-3>", self.show_mcp_menu)
-        self.mcp_tree.bind("<Double-1>", lambda e: self.edit_mcp_server())
+        self.mcp_tree.bind("<Double-1>", lambda e: self.toggle_selected_mcp())
+        self.mcp_tree.bind("<<TreeviewSelect>>", lambda e: self.update_toggle_btn())
     
     def create_skills_panel(self):
         panel = tb.Frame(self.content)
@@ -247,7 +264,15 @@ class KiloManager:
                     details += " | Headers: " + ", ".join(f"{k}: {v}" for k, v in server["headers"].items())
                 s_type = "Remote (HTTP)"
             
-            self.mcp_tree.insert("", END, text=name, values=(s_type, details), iid=name)
+            enabled = server.get("enabled", True)
+            enabled_text = "Enabled" if enabled else "Disabled"
+            enabled_tag = "enabled" if enabled else "disabled"
+            
+            self.mcp_tree.insert("", END, text=name, values=(s_type, enabled_text, details),
+                                 iid=name, tags=(enabled_tag,))
+        
+        self.mcp_tree.tag_configure("enabled", foreground="#4ade80")
+        self.mcp_tree.tag_configure("disabled", foreground="#f87171")
     
     def refresh_skills(self):
         for widget in self.skills_frame.winfo_children():
@@ -370,6 +395,13 @@ class KiloManager:
         name_entry = tb.Entry(frame, textvariable=name_var)
         name_entry.pack(fill=X, pady=(5, 15))
         
+        # Enabled
+        enabled_frame = tb.Frame(frame)
+        enabled_frame.pack(fill=X, pady=(0, 15))
+        enabled_var = tb.BooleanVar(value=server.get("enabled", True) if server else True)
+        tb.Checkbutton(enabled_frame, text="Enabled (kilo will connect to this server)",
+                       variable=enabled_var, bootstyle="round-toggle").pack(side=LEFT)
+        
         # Type
         tb.Label(frame, text="Type").pack(anchor=W)
         type_var = tb.StringVar(value=server.get("type", "local") if server else "local")
@@ -424,7 +456,7 @@ class KiloManager:
                 return
             
             s_type = type_var.get()
-            server_config = {"type": s_type}
+            server_config = {"type": s_type, "enabled": enabled_var.get()}
             
             if s_type == "local":
                 cmd = fields_frame.winfo_children()[1].get().strip()
@@ -484,6 +516,29 @@ class KiloManager:
             del self.config["mcp"]["servers"][name]
             self.save_config()
             self.refresh_mcp_list()
+    
+    def update_toggle_btn(self):
+        selection = self.mcp_tree.selection()
+        if selection:
+            name = selection[0]
+            server = self.config.get("mcp", {}).get("servers", {}).get(name, {})
+            enabled = server.get("enabled", True)
+            self.toggle_btn.configure(text="Disable" if enabled else "Enable")
+        else:
+            self.toggle_btn.configure(text="Toggle Enabled")
+    
+    def toggle_selected_mcp(self):
+        selection = self.mcp_tree.selection()
+        if not selection:
+            return
+        name = selection[0]
+        servers = self.config.setdefault("mcp", {}).setdefault("servers", {})
+        server = servers.get(name, {})
+        server["enabled"] = not server.get("enabled", True)
+        self.save_config()
+        self.refresh_mcp_list()
+        self.mcp_tree.selection_set(name)
+        self.mcp_tree.focus(name)
     
     def show_mcp_menu(self, event):
         item = self.mcp_tree.identify_row(event.y)
