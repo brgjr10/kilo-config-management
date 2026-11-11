@@ -11,6 +11,7 @@ import subprocess
 import sys
 import tempfile
 import threading
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from tkinter import *
 from tkinter import ttk, messagebox, filedialog, simpledialog
@@ -470,12 +471,18 @@ class KiloManager:
                     pass
 
     def fetch_all_tools(self):
-        """Fetch tools from every configured server (runs in a thread)."""
+        """Fetch tools from every configured server in parallel (runs in a thread)."""
         servers = self.config.get("mcp", {}).get("servers", {})
+        if not servers:
+            return []
         all_tools = []
-        for name, server in servers.items():
-            tools = self.fetch_server_tools(name, server)
-            all_tools.extend(tools)
+        with ThreadPoolExecutor(max_workers=len(servers)) as executor:
+            futures = {
+                executor.submit(self.fetch_server_tools, name, server): name
+                for name, server in servers.items()
+            }
+            for future in as_completed(futures):
+                all_tools.extend(future.result())
         return all_tools
 
     def refresh_tools(self):
