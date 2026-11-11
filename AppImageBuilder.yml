@@ -1,0 +1,7 @@
+version: 1
+
+AppDir:
+  path: AppDir
+
+AppImage:
+  arch: x86_64
