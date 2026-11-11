@@ -1,0 +1,83 @@
+name: Build Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build-exe:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pyinstaller ttkbootstrap Pillow
+
+      - name: Build with PyInstaller
+        run: |
+          pyinstaller --onefile --windowed kilo_manager.py
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: kilo-manager-exe
+          path: dist/kilo_manager
+
+  build-appimage:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install appimage-builder ttkbootstrap Pillow
+
+      - name: Build AppImage
+        run: |
+          appimage-builder --create-appimage
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: kilo-manager-appimage
+          path: dist/*.AppImage
+
+  create-release:
+    needs: [build-exe, build-appimage]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download exe artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: kilo-manager-exe
+          path: dist/
+
+      - name: Download AppImage artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: kilo-manager-appimage
+          path: dist/
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            dist/kilo_manager
+            dist/*.AppImage
+          generate_release_notes: true

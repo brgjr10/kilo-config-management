@@ -1,0 +1,18 @@
+version: 1
+
+AppImage:
+  id: org.brgjr10.kilo-manager
+  name: kilo-manager
+  icon: kilo-manager
+  type: appimage
+  description: Desktop GUI for managing Kilo configuration
+
+Bundle:
+  # The executable to bundle
+  binaries:
+    - kilo_manager
+  # Desktop file
+  desktop_files:
+    - kilo-manager.desktop
+  # AppRun script
+  app_run: AppRun
