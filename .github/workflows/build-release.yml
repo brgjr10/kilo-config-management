@@ -25,7 +25,10 @@ jobs:
 
       - name: Build with PyInstaller
         run: |
-          pyinstaller --onefile --windowed kilo_manager.py
+          pyinstaller --onefile --windowed kilo_manager.py \
+            --hidden-import=PIL._tkinter_finder \
+            --hidden-import=PIL.ImageTk \
+            --collect-all=PIL
 
       - name: Prepare AppDir
         run: |
