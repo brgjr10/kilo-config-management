@@ -40,10 +40,12 @@ jobs:
         run: |
           wget -q https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage -O appimagetool.AppImage
           chmod +x appimagetool.AppImage
+          ./appimagetool.AppImage --appimage-extract
+          mv squashfs-root appimagetool
 
       - name: Build AppImage
         run: |
-          ./appimagetool.AppImage AppDir kilo_manager-x86_64.AppImage
+          ./appimagetool/AppRun AppDir kilo_manager-x86_64.AppImage
 
       - name: Upload exe artifact
         uses: actions/upload-artifact@v4
