@@ -10,6 +10,7 @@ import os
 import subprocess
 import sys
 import tempfile
+import threading
 from pathlib import Path
 from tkinter import *
 from tkinter import ttk, messagebox, filedialog, simpledialog
@@ -183,6 +184,7 @@ class KiloManager:
         self.nav_buttons = {}
         nav_items = [
             ("mcp", "MCP Servers", "🔌"),
+            ("tools", "MCP Tools", "🛠️"),
             ("skills", "Skills", "🧠"),
             ("permissions", "Permissions", "🔐"),
         ]
@@ -207,6 +209,7 @@ class KiloManager:
         # Tab panels
         self.panels = {}
         self.create_mcp_panel()
+        self.create_tools_panel()
         self.create_skills_panel()
         self.create_permissions_panel()
         
@@ -280,6 +283,281 @@ class KiloManager:
         self.mcp_tree.bind("<Button-3>", self.show_mcp_menu)
         self.mcp_tree.bind("<Double-1>", lambda e: self.toggle_selected_mcp())
         self.mcp_tree.bind("<<TreeviewSelect>>", lambda e: self.update_toggle_btn())
+    
+    def create_tools_panel(self):
+        panel = tb.Frame(self.content)
+        self.panels["tools"] = panel
+
+        # Header
+        header = tb.Frame(panel)
+        header.pack(fill=X, pady=(0, 20))
+        tb.Label(header, text="MCP Tools", font=("Helvetica", 24, "bold")).pack(side=LEFT)
+        tb.Label(header, text="List every tool exposed by each configured MCP server",
+                 bootstyle="secondary").pack(side=LEFT, padx=10)
+        tb.Button(header, text="🔄 Refresh All", command=self.refresh_tools,
+                  bootstyle="primary-outline").pack(side=RIGHT)
+
+        # Tool list
+        list_frame = tb.Frame(panel)
+        list_frame.pack(fill=BOTH, expand=True)
+
+        self.tools_tree = tb.Treeview(list_frame, columns=("server", "tool", "description"),
+                                       show="tree headings", bootstyle="secondary", height=18)
+        self.tools_tree.heading("#0", text="#")
+        self.tools_tree.heading("server", text="Server")
+        self.tools_tree.heading("tool", text="Tool")
+        self.tools_tree.heading("description", text="Description")
+        self.tools_tree.column("#0", width=50, anchor=CENTER)
+        self.tools_tree.column("server", width=200)
+        self.tools_tree.column("tool", width=220)
+        self.tools_tree.column("description", width=600)
+        self.tools_tree.pack(fill=BOTH, expand=True, side=LEFT)
+
+        vsb = tb.Scrollbar(list_frame, orient=VERTICAL, command=self.tools_tree.yview)
+        self._tools_vsb = vsb
+        self.tools_tree.configure(yscrollcommand=vsb.set)
+        vsb.pack(side=RIGHT, fill=Y)
+
+        self.tools_empty_state = tb.Frame(list_frame)
+        self.tools_empty_state.pack_forget()
+        tb.Label(self.tools_empty_state, text="No tools fetched yet",
+                 font=("Helvetica", 14), bootstyle="secondary").pack(pady=(40, 10))
+        tb.Button(self.tools_empty_state, text="🔄 Refresh All", command=self.refresh_tools,
+                  bootstyle="primary").pack()
+
+        # Status bar
+        self.tools_status = tb.Label(panel, text="", bootstyle="secondary", anchor=W)
+        self.tools_status.pack(fill=X, pady=(10, 0))
+
+        # Context menu for copy
+        self.tools_menu = Menu(self.root, tearoff=0)
+        self.tools_menu.add_command(label="Copy Tool Name", command=self.copy_tool_name)
+        self.tools_menu.add_command(label="Copy Server + Tool", command=self.copy_server_tool)
+        self.tools_tree.bind("<Button-3>", self.show_tools_menu)
+
+    def strip_jsonc_comments(self, text: str) -> str:
+        """Remove // and /* */ comments from JSONC text."""
+        result = []
+        i = 0
+        n = len(text)
+        in_str = False
+        esc = False
+        while i < n:
+            c = text[i]
+            nxt = text[i + 1] if i + 1 < n else ""
+            if in_str:
+                result.append(c)
+                if esc:
+                    esc = False
+                elif c == "\\":
+                    esc = True
+                elif c == '"':
+                    in_str = False
+                i += 1
+            elif c == "/" and nxt == "/":
+                while i < n and text[i] != "\n":
+                    i += 1
+            elif c == "/" and nxt == "*":
+                i += 2
+                while i < n - 1 and not (text[i] == "*" and text[i + 1] == "/"):
+                    i += 1
+                i += 2
+            else:
+                if c == '"':
+                    in_str = True
+                result.append(c)
+                i += 1
+        return "".join(result)
+
+    def load_config_raw(self, path: Path) -> dict:
+        """Load a JSON/JSONC config file, stripping comments."""
+        text = self.strip_jsonc_comments(path.read_text())
+        return json.loads(text)
+
+    def mcp_request_line(self, proc, request: dict, timeout: float = 10.0) -> dict:
+        """Send a JSON-RPC request and read one response line."""
+        import select
+        import time as _time
+        line = json.dumps(request) + "\n"
+        try:
+            proc.stdin.write(line)
+            proc.stdin.flush()
+        except (BrokenPipeError, OSError):
+            return {"error": "server closed stdin"}
+        deadline = _time.time() + timeout
+        while True:
+            remaining = deadline - _time.time()
+            if remaining <= 0:
+                return {"error": "timeout waiting for response"}
+            ready, _, _ = select.select([proc.stdout], [], [], min(remaining, 1.0))
+            if ready:
+                resp_line = proc.stdout.readline()
+                if resp_line:
+                    try:
+                        return json.loads(resp_line)
+                    except json.JSONDecodeError:
+                        return {"error": f"invalid JSON: {resp_line[:100]}"}
+                return {"error": "no response (server closed stdout)"}
+            if proc.poll() is not None:
+                return {"error": "server process exited"}
+
+    def fetch_server_tools(self, name: str, server: dict) -> list:
+        """Connect to one MCP server and return its tool list."""
+        srv_type = server.get("type", "local")
+        if srv_type == "builtin":
+            return [{"name": "(builtin)", "description": f"{name} is a Kilo built-in server",
+                     "_server": name, "_error": False}]
+
+        command = server.get("command")
+        if not command:
+            return [{"name": "(error)", "description": f"{name}: no 'command' configured",
+                     "_server": name, "_error": True}]
+
+        full_env = dict(os.environ)
+        full_env.update(server.get("environment", {}))
+
+        try:
+            proc = subprocess.Popen(
+                command,
+                stdin=subprocess.PIPE,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.DEVNULL,
+                text=True,
+                env=full_env,
+            )
+        except Exception as exc:
+            return [{"name": "(error)", "description": f"{name}: failed to start: {exc}",
+                     "_server": name, "_error": True}]
+
+        try:
+            init = {
+                "jsonrpc": "2.0", "id": 1, "method": "initialize",
+                "params": {
+                    "protocolVersion": "2024-11-05",
+                    "capabilities": {},
+                    "clientInfo": {"name": "kilo-manager", "version": "1.0.0"},
+                },
+            }
+            resp = self.mcp_request_line(proc, init)
+            if "error" in resp:
+                return [{"name": "(error)",
+                         "description": f"{name}: initialize failed: {resp['error']}",
+                         "_server": name, "_error": True}]
+
+            tools_req = {"jsonrpc": "2.0", "id": 2, "method": "tools/list", "params": {}}
+            resp = self.mcp_request_line(proc, tools_req)
+            if "error" in resp:
+                return [{"name": "(error)",
+                         "description": f"{name}: tools/list failed: {resp['error']}",
+                         "_server": name, "_error": True}]
+
+            tools = resp.get("result", {}).get("tools", [])
+            for t in tools:
+                t["_server"] = name
+                t["_error"] = False
+            return tools
+        except Exception as exc:
+            return [{"name": "(error)", "description": f"{name}: {exc}",
+                     "_server": name, "_error": True}]
+        finally:
+            try:
+                proc.terminate()
+                proc.wait(timeout=3)
+            except Exception:
+                try:
+                    proc.kill()
+                except Exception:
+                    pass
+
+    def fetch_all_tools(self):
+        """Fetch tools from every configured server (runs in a thread)."""
+        servers = self.config.get("mcp", {}).get("servers", {})
+        all_tools = []
+        for name, server in servers.items():
+            tools = self.fetch_server_tools(name, server)
+            all_tools.extend(tools)
+        return all_tools
+
+    def refresh_tools(self):
+        """Start fetching tools from all servers in a background thread."""
+        servers = self.config.get("mcp", {}).get("servers", {})
+        if not servers:
+            for item in self.tools_tree.get_children():
+                self.tools_tree.delete(item)
+            self.tools_status.configure(text="No MCP servers configured")
+            self.update_tools_empty_state()
+            return
+
+        self.tools_status.configure(text="Fetching tools from all servers...")
+        thread = threading.Thread(target=self._fetch_and_populate_tools, daemon=True)
+        thread.start()
+
+    def _fetch_and_populate_tools(self):
+        all_tools = self.fetch_all_tools()
+        self.root.after(0, lambda: self._populate_tools_tree(all_tools))
+
+    def _populate_tools_tree(self, all_tools):
+        for item in self.tools_tree.get_children():
+            self.tools_tree.delete(item)
+
+        count = 0
+        for t in all_tools:
+            server = t.get("_server", "?")
+            tool_name = t.get("name", "?")
+            desc = (t.get("description") or "").replace("\n", " ")
+            is_error = t.get("_error", False)
+            tag = "error" if is_error else "ok"
+            self.tools_tree.insert("", END, text=str(count + 1),
+                                   values=(server, tool_name, desc),
+                                   tags=(tag,))
+            count += 1
+
+        self.tools_tree.tag_configure("ok", foreground="#ffffff")
+        self.tools_tree.tag_configure("error", foreground="#f87171")
+
+        if count:
+            self.tools_status.configure(text=f"{count} tool(s) across {len(set(t.get('_server','?') for t in all_tools))} server(s)")
+        else:
+            self.tools_status.configure(text="No tools found")
+        self.update_tools_empty_state()
+
+    def update_tools_empty_state(self):
+        if not hasattr(self, "tools_empty_state"):
+            return
+        if self.tools_tree.get_children():
+            self.tools_empty_state.pack_forget()
+            self.tools_tree.pack(fill=BOTH, expand=True, side=LEFT)
+            if hasattr(self, "_tools_vsb"):
+                self._tools_vsb.pack(side=RIGHT, fill=Y)
+        else:
+            self.tools_tree.pack_forget()
+            if hasattr(self, "_tools_vsb"):
+                self._tools_vsb.pack_forget()
+            self.tools_empty_state.pack(expand=True)
+
+    def show_tools_menu(self, event):
+        item = self.tools_tree.identify_row(event.y)
+        if item:
+            self.tools_tree.selection_set(item)
+            self.tools_menu.post(event.x_root, event.y_root)
+
+    def copy_tool_name(self):
+        selection = self.tools_tree.selection()
+        if not selection:
+            return
+        values = self.tools_tree.item(selection[0], "values")
+        if values:
+            self.root.clipboard_clear()
+            self.root.clipboard_append(values[1])
+
+    def copy_server_tool(self):
+        selection = self.tools_tree.selection()
+        if not selection:
+            return
+        values = self.tools_tree.item(selection[0], "values")
+        if values:
+            self.root.clipboard_clear()
+            self.root.clipboard_append(f"{values[0]} / {values[1]}")
     
     def create_skills_panel(self):
         panel = tb.Frame(self.content)
@@ -380,6 +658,7 @@ class KiloManager:
     
     def refresh_all(self):
         self.refresh_mcp_list()
+        self.refresh_tools()
         self.refresh_skills()
         self.refresh_permissions()
     
