@@ -1,0 +1,11 @@
+# Kilo Manager
+*.pyc
+__pycache__/
+*.spec
+*.dist-info/
+/build/
+/dist/
+*.egg-info/
+.venv/
+venv/
+.env
