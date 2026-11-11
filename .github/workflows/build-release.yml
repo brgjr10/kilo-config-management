@@ -48,4 +48,3 @@ jobs:
         with:
           artifacts: "dist/kilo_manager"
           token: ${{ secrets.GITHUB_TOKEN }}
-          generateReleaseNotes: true
