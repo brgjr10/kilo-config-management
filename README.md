@@ -33,7 +33,9 @@ pyinstaller --onefile --windowed kilo_manager.py
 
 ```bash
 pip3 install --break-system-packages appimage-builder
-appimage-builder --create-appimage
+appimage-builder --generate
+# Edit AppImageBuilder.yml as needed, then:
+appimage-builder
 ```
 
 ## License

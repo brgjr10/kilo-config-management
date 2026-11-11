@@ -46,9 +46,12 @@ jobs:
           python -m pip install --upgrade pip
           pip install appimage-builder ttkbootstrap Pillow
 
+      - name: Generate AppImage recipe
+        run: |
+          appimage-builder --generate
       - name: Build AppImage
         run: |
-          appimage-builder --create-appimage
+          appimage-builder
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
