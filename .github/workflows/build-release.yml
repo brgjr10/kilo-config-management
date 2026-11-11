@@ -58,6 +58,18 @@ jobs:
           cp AppRun AppDir/
           chmod +x AppDir/usr/bin/kilo_manager AppDir/AppRun
 
+      - name: Create app icon
+        run: |
+          python3 -c "
+from PIL import Image
+img = Image.new('RGB', (64, 64), color='blue')
+img.save('AppDir/icons/application-vnd.appimage.png')
+          " && mkdir -p AppDir/icons && python3 -c "
+from PIL import Image
+img = Image.new('RGB', (64, 64), color='blue')
+img.save('AppDir/icons/application-vnd.appimage.png')
+          "
+
       - name: Build AppImage
         run: |
           appimage-builder
