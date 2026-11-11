@@ -38,18 +38,19 @@ class _FakeTree:
         pass
 
 
-class _FakePlace:
+class _FakePack:
     def __init__(self):
-        self.placed = False
+        self.packed = False
+        self.pack_kwargs = None
         self.forgotten = False
 
-    def place(self, **kwargs):
-        self.placed = True
-        self.kwargs = kwargs
+    def pack(self, **kwargs):
+        self.packed = True
+        self.pack_kwargs = kwargs
 
-    def place_forget(self):
+    def pack_forget(self):
         self.forgotten = True
-        self.placed = False
+        self.packed = False
 
 
 class TestUndoRestore(unittest.TestCase):
@@ -128,27 +129,28 @@ class TestMcpValidationMessages(unittest.TestCase):
 
 
 class TestEmptyStates(unittest.TestCase):
-    def test_mcp_empty_state_place_toggle(self):
+    def test_mcp_empty_state_pack_toggle(self):
         mgr = _bare_manager(config={"mcp": {"servers": {}}, "permission": {"bash": {}, "external_directory": {}}})
         mgr.mcp_tree = _FakeTree(children=())
-        mgr.mcp_empty_state = _FakePlace()
+        mgr.mcp_empty_state = _FakePack()
         mgr.update_mcp_empty_state()
-        self.assertTrue(mgr.mcp_empty_state.placed)
+        self.assertTrue(mgr.mcp_empty_state.packed)
+        self.assertEqual(mgr.mcp_empty_state.pack_kwargs, {"expand": True})
         mgr.mcp_tree = _FakeTree(children=("s1",))
-        mgr.mcp_empty_state = _FakePlace()
+        mgr.mcp_empty_state = _FakePack()
         mgr.update_mcp_empty_state()
         self.assertTrue(mgr.mcp_empty_state.forgotten)
-        self.assertFalse(mgr.mcp_empty_state.placed)
+        self.assertFalse(mgr.mcp_empty_state.packed)
 
-    def test_permissions_empty_states_place_toggle(self):
+    def test_permissions_empty_states_pack_toggle(self):
         mgr = _bare_manager(config={"mcp": {"servers": {}}, "permission": {"bash": {}, "external_directory": {}}})
         mgr.bash_tree = _FakeTree(children=())
         mgr.ext_tree = _FakeTree(children=())
-        mgr.bash_empty_state = _FakePlace()
-        mgr.ext_empty_state = _FakePlace()
+        mgr.bash_empty_state = _FakePack()
+        mgr.ext_empty_state = _FakePack()
         mgr.update_permissions_empty_states()
-        self.assertTrue(mgr.bash_empty_state.placed)
-        self.assertTrue(mgr.ext_empty_state.placed)
+        self.assertTrue(mgr.bash_empty_state.packed)
+        self.assertTrue(mgr.ext_empty_state.packed)
 
     def test_empty_state_texts_present(self):
         src = Path(kilo_manager.__file__).read_text()

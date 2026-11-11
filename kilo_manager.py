@@ -265,6 +265,7 @@ class KiloManager:
         self.mcp_tree.pack(fill=BOTH, expand=True)
 
         self.mcp_empty_state = tb.Frame(list_frame)
+        self.mcp_empty_state.pack_forget()
         tb.Label(self.mcp_empty_state, text="No MCP servers configured",
                  font=("Helvetica", 14), bootstyle="secondary").pack(pady=(40, 10))
         tb.Button(self.mcp_empty_state, text="➕ Add Server", command=self.add_mcp_server,
@@ -335,6 +336,7 @@ class KiloManager:
         self.bash_tree.column("action", width=100)
         self.bash_tree.pack(fill=BOTH, expand=True)
         self.bash_empty_state = tb.Frame(bash_list)
+        self.bash_empty_state.pack_forget()
         tb.Label(self.bash_empty_state, text="No bash permissions configured",
                  font=("Helvetica", 12), bootstyle="secondary").pack(pady=(20, 8))
         tb.Button(self.bash_empty_state, text="➕ Add", command=self.add_bash_permission,
@@ -365,6 +367,7 @@ class KiloManager:
         self.ext_tree.column("action", width=100)
         self.ext_tree.pack(fill=BOTH, expand=True)
         self.ext_empty_state = tb.Frame(ext_list)
+        self.ext_empty_state.pack_forget()
         tb.Label(self.ext_empty_state, text="No external directory permissions configured",
                  font=("Helvetica", 12), bootstyle="secondary").pack(pady=(20, 8))
         tb.Button(self.ext_empty_state, text="➕ Add", command=self.add_external_permission,
@@ -412,9 +415,9 @@ class KiloManager:
         if not hasattr(self, "mcp_empty_state"):
             return
         if self.mcp_tree.get_children():
-            self.mcp_empty_state.place_forget()
+            self.mcp_empty_state.pack_forget()
         else:
-            self.mcp_empty_state.place(relx=0.5, rely=0.45, anchor="center")
+            self.mcp_empty_state.pack(expand=True)
     
     def refresh_skills(self):
         for widget in self.skills_frame.winfo_children():
@@ -503,14 +506,14 @@ class KiloManager:
     def update_permissions_empty_states(self):
         if hasattr(self, "bash_empty_state"):
             if self.bash_tree.get_children():
-                self.bash_empty_state.place_forget()
+                self.bash_empty_state.pack_forget()
             else:
-                self.bash_empty_state.place(relx=0.5, rely=0.45, anchor="center")
+                self.bash_empty_state.pack(expand=True)
         if hasattr(self, "ext_empty_state"):
             if self.ext_tree.get_children():
-                self.ext_empty_state.place_forget()
+                self.ext_empty_state.pack_forget()
             else:
-                self.ext_empty_state.place(relx=0.5, rely=0.45, anchor="center")
+                self.ext_empty_state.pack(expand=True)
     
     # MCP Server methods
     def add_mcp_server(self):
