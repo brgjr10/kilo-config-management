@@ -1,4 +1,5 @@
 import unittest
+from tkinter import BOTH
 from unittest import mock
 from pathlib import Path
 
@@ -24,6 +25,9 @@ class _FakeTree:
     def __init__(self, selection=(), children=()):
         self._selection = selection
         self._children = list(children)
+        self.packed = False
+        self.pack_kwargs = None
+        self.pack_forgotten = False
 
     def selection(self):
         return self._selection
@@ -36,6 +40,14 @@ class _FakeTree:
 
     def focus(self, _name):
         pass
+
+    def pack(self, **kwargs):
+        self.packed = True
+        self.pack_kwargs = kwargs
+
+    def pack_forget(self):
+        self.pack_forgotten = True
+        self.packed = False
 
 
 class _FakePack:
@@ -136,11 +148,14 @@ class TestEmptyStates(unittest.TestCase):
         mgr.update_mcp_empty_state()
         self.assertTrue(mgr.mcp_empty_state.packed)
         self.assertEqual(mgr.mcp_empty_state.pack_kwargs, {"expand": True})
+        self.assertTrue(mgr.mcp_tree.pack_forgotten)
         mgr.mcp_tree = _FakeTree(children=("s1",))
         mgr.mcp_empty_state = _FakePack()
         mgr.update_mcp_empty_state()
         self.assertTrue(mgr.mcp_empty_state.forgotten)
         self.assertFalse(mgr.mcp_empty_state.packed)
+        self.assertTrue(mgr.mcp_tree.packed)
+        self.assertEqual(mgr.mcp_tree.pack_kwargs, {"fill": BOTH, "expand": True})
 
     def test_permissions_empty_states_pack_toggle(self):
         mgr = _bare_manager(config={"mcp": {"servers": {}}, "permission": {"bash": {}, "external_directory": {}}})
@@ -151,6 +166,8 @@ class TestEmptyStates(unittest.TestCase):
         mgr.update_permissions_empty_states()
         self.assertTrue(mgr.bash_empty_state.packed)
         self.assertTrue(mgr.ext_empty_state.packed)
+        self.assertTrue(mgr.bash_tree.pack_forgotten)
+        self.assertTrue(mgr.ext_tree.pack_forgotten)
 
     def test_empty_state_texts_present(self):
         src = Path(kilo_manager.__file__).read_text()

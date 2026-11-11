@@ -416,7 +416,9 @@ class KiloManager:
             return
         if self.mcp_tree.get_children():
             self.mcp_empty_state.pack_forget()
+            self.mcp_tree.pack(fill=BOTH, expand=True)
         else:
+            self.mcp_tree.pack_forget()
             self.mcp_empty_state.pack(expand=True)
     
     def refresh_skills(self):
@@ -507,12 +509,16 @@ class KiloManager:
         if hasattr(self, "bash_empty_state"):
             if self.bash_tree.get_children():
                 self.bash_empty_state.pack_forget()
+                self.bash_tree.pack(fill=BOTH, expand=True)
             else:
+                self.bash_tree.pack_forget()
                 self.bash_empty_state.pack(expand=True)
         if hasattr(self, "ext_empty_state"):
             if self.ext_tree.get_children():
                 self.ext_empty_state.pack_forget()
+                self.ext_tree.pack(fill=BOTH, expand=True)
             else:
+                self.ext_tree.pack_forget()
                 self.ext_empty_state.pack(expand=True)
     
     # MCP Server methods
