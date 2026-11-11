@@ -28,7 +28,7 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: kilo-manager-exe
+          name: kilo-manager
           path: dist/kilo_manager
 
   create-release:
@@ -37,10 +37,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Download exe artifact
+      - name: Download artifact
         uses: actions/download-artifact@v4
         with:
-          name: kilo-manager-exe
+          name: kilo-manager
           path: dist/
 
       - name: Create Release
