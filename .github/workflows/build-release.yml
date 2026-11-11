@@ -27,11 +27,35 @@ jobs:
         run: |
           pyinstaller --onefile --windowed kilo_manager.py
 
-      - name: Upload artifact
+      - name: Prepare AppDir
+        run: |
+          mkdir -p AppDir/usr/bin
+          cp dist/kilo_manager AppDir/usr/bin/
+          cp kilo-manager.desktop AppDir/
+          cp AppRun AppDir/
+          cp kilo-manager.png AppDir/kilo-manager.png
+          chmod +x AppDir/usr/bin/kilo_manager AppDir/AppRun
+
+      - name: Download appimagetool
+        run: |
+          wget -q https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage -O appimagetool.AppImage
+          chmod +x appimagetool.AppImage
+
+      - name: Build AppImage
+        run: |
+          ./appimagetool.AppImage AppDir kilo_manager-x86_64.AppImage
+
+      - name: Upload exe artifact
         uses: actions/upload-artifact@v4
         with:
-          name: kilo-manager
+          name: kilo-manager-exe
           path: dist/kilo_manager
+
+      - name: Upload AppImage artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: kilo-manager-appimage
+          path: kilo_manager-x86_64.AppImage
 
   create-release:
     needs: [build]
@@ -41,14 +65,20 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Download artifact
+      - name: Download exe artifact
         uses: actions/download-artifact@v4
         with:
-          name: kilo-manager
+          name: kilo-manager-exe
+          path: dist/
+
+      - name: Download AppImage artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: kilo-manager-appimage
           path: dist/
 
       - name: Create Release
         uses: ncipollo/release-action@v1
         with:
-          artifacts: "dist/kilo_manager"
+          artifacts: "dist/kilo_manager,dist/kilo_manager-x86_64.AppImage"
           token: ${{ secrets.GITHUB_TOKEN }}
