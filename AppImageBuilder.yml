@@ -2,11 +2,6 @@ version: 1
 
 AppImage:
   id: org.brgjr10.kilo-manager
-  name: kilo-manager
-  icon: kilo-manager
-  type: appimage
-  arch: x86_64
-  description: Desktop GUI for managing Kilo configuration
 
 Bundle:
   binaries:
