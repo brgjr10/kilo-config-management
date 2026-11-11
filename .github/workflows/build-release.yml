@@ -44,11 +44,24 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install appimage-builder ttkbootstrap Pillow
+          pip install pyinstaller ttkbootstrap Pillow appimage-builder
+
+      - name: Build PyInstaller executable
+        run: |
+          pyinstaller --onefile --windowed kilo_manager.py
+
+      - name: Create AppDir structure
+        run: |
+          mkdir -p AppDir/usr/bin
+          cp dist/kilo_manager AppDir/usr/bin/
+          cp kilo-manager.desktop AppDir/
+          cp AppRun AppDir/
+          chmod +x AppDir/usr/bin/kilo_manager AppDir/AppRun
 
       - name: Generate AppImage recipe
         run: |
           appimage-builder --generate
+
       - name: Build AppImage
         run: |
           appimage-builder
