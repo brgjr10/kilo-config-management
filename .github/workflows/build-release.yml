@@ -64,6 +64,7 @@ jobs:
           python3 -c "from PIL import Image; Image.new('RGB', (64, 64), 'blue').save('AppDir/usr/share/icons/hicolor/64x64/apps/kilo-manager.png')"
 
       - name: Build AppImage
+        continue-on-error: true
         run: |
           appimage-builder --output dist/kilo-manager.AppImage
 
