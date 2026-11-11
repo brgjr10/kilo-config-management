@@ -47,11 +47,15 @@ jobs:
         run: |
           ./appimagetool/AppRun AppDir kilo_manager-x86_64.AppImage
 
+      - name: Build exe with .exe extension
+        run: |
+          cp dist/kilo_manager dist/kilo_manager.exe
+
       - name: Upload exe artifact
         uses: actions/upload-artifact@v4
         with:
           name: kilo-manager-exe
-          path: dist/kilo_manager
+          path: dist/kilo_manager.exe
 
       - name: Upload AppImage artifact
         uses: actions/upload-artifact@v4
@@ -82,5 +86,5 @@ jobs:
       - name: Create Release
         uses: ncipollo/release-action@v1
         with:
-          artifacts: "dist/kilo_manager,dist/kilo_manager-x86_64.AppImage"
+          artifacts: "dist/kilo_manager.exe,dist/kilo_manager-x86_64.AppImage"
           token: ${{ secrets.GITHUB_TOKEN }}
