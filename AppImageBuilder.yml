@@ -4,14 +4,8 @@ AppDir:
   path: AppDir
   app_info:
     id: org.brgjr10.kilo-manager
+    version: "1.0.0"
     exec: usr/bin/kilo_manager
 
 AppImage:
   arch: x86_64
-
-Bundle:
-  binaries:
-    - usr/bin/kilo_manager
-  desktop_files:
-    - kilo-manager.desktop
-  app_run: AppRun
