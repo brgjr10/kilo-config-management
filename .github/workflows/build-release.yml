@@ -33,6 +33,7 @@ jobs:
 
   build-appimage:
     runs-on: ubuntu-latest
+    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
 
@@ -64,11 +65,11 @@ jobs:
           python3 -c "from PIL import Image; Image.new('RGB', (64, 64), 'blue').save('AppDir/usr/share/icons/hicolor/64x64/apps/kilo-manager.png')"
 
       - name: Build AppImage
-        continue-on-error: true
         run: |
           appimage-builder --output dist/kilo-manager.AppImage
 
       - name: Upload artifact
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: kilo-manager-appimage
@@ -77,6 +78,7 @@ jobs:
   create-release:
     needs: [build-exe, build-appimage]
     runs-on: ubuntu-latest
+    if: always()
     steps:
       - uses: actions/checkout@v4
 
@@ -87,6 +89,7 @@ jobs:
           path: dist/
 
       - name: Download AppImage artifact
+        continue-on-error: true
         uses: actions/download-artifact@v4
         with:
           name: kilo-manager-appimage
