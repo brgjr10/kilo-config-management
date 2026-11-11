@@ -60,15 +60,8 @@ jobs:
 
       - name: Create app icon
         run: |
-          python3 -c "
-from PIL import Image
-img = Image.new('RGB', (64, 64), color='blue')
-img.save('AppDir/icons/application-vnd.appimage.png')
-          " && mkdir -p AppDir/icons && python3 -c "
-from PIL import Image
-img = Image.new('RGB', (64, 64), color='blue')
-img.save('AppDir/icons/application-vnd.appimage.png')
-          "
+          mkdir -p AppDir/icons
+          python3 -c "from PIL import Image; Image.new('RGB', (64, 64), 'blue').save('AppDir/icons/application-vnd.appimage.png')"
 
       - name: Build AppImage
         run: |
