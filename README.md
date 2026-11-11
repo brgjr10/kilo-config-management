@@ -2,6 +2,8 @@
 
 Desktop GUI for managing [Kilo](https://kilo.ai) configuration — MCP servers, skills, and permissions. Built with Python, tkinter, and [ttkbootstrap](https://ttkbootstrap.readthedocs.io/).
 
+<img width="930" height="688" alt="image" src="https://github.com/user-attachments/assets/277b7790-4c88-4987-8808-8b7355cb038a" />
+
 ## Features
 
 | Tab | What you can do |
